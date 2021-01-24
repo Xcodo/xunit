@@ -181,6 +181,12 @@ namespace Xunit.Runner.Common
 		public bool ShadowCopyOrDefault => ShadowCopy ?? true;
 
 		/// <summary>
+		/// Gets or sets the folder to be used for shadow copy files. If the value is not set,
+		/// the system defaults for shadow copying are used.
+		/// </summary>
+		public string? ShadowCopyFolder { get; set; }
+
+		/// <summary>
 		/// Gets or sets a flag indicating whether testing should stop on a failure.
 		/// </summary>
 		public bool? StopOnFail { get; set; }

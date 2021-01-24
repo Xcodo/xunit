@@ -59,7 +59,9 @@ namespace Xunit.Runners
 			bool shadowCopy = true,
 			string? shadowCopyFolder = null)
 		{
+#pragma warning disable CS0618 // Type or member is obsolete
 			controller = new XunitFrontController(appDomainSupport, assemblyFileName, configFileName, shadowCopy, shadowCopyFolder, diagnosticMessageSink: this);
+#pragma warning restore CS0618 // Type or member is obsolete
 			disposalTracker.Add(controller);
 
 			configuration = ConfigReader.Load(assemblyFileName, configFileName);

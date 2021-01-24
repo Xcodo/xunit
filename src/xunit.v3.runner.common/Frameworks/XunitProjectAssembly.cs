@@ -69,7 +69,8 @@ namespace Xunit.Runner.Common
 		public XunitProject Project { get; }
 
 		/// <summary>
-		/// Gets the target framework that the test assembly was compiled against.
+		/// Gets the target framework that the test assembly was compiled against. If the value was not
+		/// set, returns <see cref="AssemblyUtility.UnknownTargetFramework"/>.
 		/// </summary>
 		public string TargetFramework
 		{

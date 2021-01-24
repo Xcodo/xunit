@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Xunit.Internal;
 using Xunit.Runner.Common;
 using Xunit.Runner.v2;
+using Xunit.Runner.v3;
 using Xunit.Sdk;
 using Xunit.v3;
 
 #if NETFRAMEWORK
-using System.Linq;
 using Xunit.Runner.v1;
 #endif
 
@@ -17,7 +18,7 @@ namespace Xunit
 {
 	/// <summary>
 	/// Default implementation of <see cref="IFrontController"/> which supports running tests from
-	/// both xUnit.net v1 and v2.
+	/// xUnit.net v1, v2, and v3.
 	/// </summary>
 	public class XunitFrontController : IFrontController, IAsyncDisposable
 	{
@@ -42,18 +43,8 @@ namespace Xunit
 			sourceInformationProvider = _NullSourceInformationProvider.Instance;
 		}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="XunitFrontController"/> class.
-		/// </summary>
-		/// <param name="appDomainSupport">Determines whether tests should be run in a separate app domain.</param>
-		/// <param name="assemblyFileName">The test assembly.</param>
-		/// <param name="configFileName">The test assembly configuration file.</param>
-		/// <param name="shadowCopy">If set to <c>true</c>, runs tests in a shadow copied app domain, which allows
-		/// tests to be discovered and run without locking assembly files on disk.</param>
-		/// <param name="shadowCopyFolder">The path on disk to use for shadow copying; if <c>null</c>, a folder
-		/// will be automatically (randomly) generated</param>
-		/// <param name="sourceInformationProvider">The source information provider. If <c>null</c>, uses the default (<see cref="T:Xunit.VisualStudioSourceInformationProvider"/>).</param>
-		/// <param name="diagnosticMessageSink">The message sink which receives <see cref="_DiagnosticMessage"/> messages.</param>
+		/// <summary/>
+		[Obsolete("Please use the version that takes XunitProjectAssembly")]
 		public XunitFrontController(
 			AppDomainSupport appDomainSupport,
 			string assemblyFileName,
@@ -63,14 +54,31 @@ namespace Xunit
 			_ISourceInformationProvider? sourceInformationProvider = null,
 			_IMessageSink? diagnosticMessageSink = null)
 		{
-			this.appDomainSupport = appDomainSupport;
-			this.assemblyFileName = assemblyFileName;
-			this.configFileName = configFileName;
-			this.shadowCopy = shadowCopy;
-			this.shadowCopyFolder = shadowCopyFolder;
+			throw new NotImplementedException();
+		}
+
+		/// <summary>
+		/// Initializes a new instance of the <see cref="XunitFrontController"/> class.
+		/// </summary>
+		/// <param name="assembly">The project assembly to be run.</param>
+		/// <param name="sourceInformationProvider">The source information provider. If <c>null</c>, uses the default (<see cref="T:Xunit.VisualStudioSourceInformationProvider"/>).</param>
+		/// <param name="diagnosticMessageSink">The message sink which receives <see cref="_DiagnosticMessage"/> messages.</param>
+		public XunitFrontController(
+			XunitProjectAssembly assembly,
+			_ISourceInformationProvider? sourceInformationProvider = null,
+			_IMessageSink? diagnosticMessageSink = null)
+		{
+			Guard.ArgumentNotNull(nameof(assembly), assembly);
+
+			appDomainSupport = assembly.Configuration.AppDomainOrDefault;
+			assemblyFileName = Guard.FileExists($"{nameof(assembly)}.{nameof(assembly.AssemblyFilename)}", assembly.AssemblyFilename);
+			configFileName = assembly.ConfigFilename;
+			shadowCopy = assembly.Configuration.ShadowCopyOrDefault;
+			shadowCopyFolder = assembly.Configuration.ShadowCopyFolder;
 			this.diagnosticMessageSink = diagnosticMessageSink ?? new _NullMessageSink();
 
-			Guard.FileExists("assemblyFileName", assemblyFileName);
+			if (configFileName != null)
+				Guard.FileExists($"{nameof(assembly)}.{nameof(assembly.ConfigFilename)}", configFileName);
 
 			if (sourceInformationProvider == null)
 			{
@@ -118,18 +126,22 @@ namespace Xunit
 		/// </summary>
 		protected virtual IFrontController CreateInnerController()
 		{
-#if NETFRAMEWORK
 			var assemblyFolder = Path.GetDirectoryName(assemblyFileName)!;
+
+			if (File.Exists(Path.Combine(assemblyFolder, "xunit.v3.core.dll")))
+				return new Xunit3(diagnosticMessageSink, sourceInformationProvider, assemblyFileName, configFileName);
+
 			if (Directory.EnumerateFiles(assemblyFolder, "xunit.execution.*.dll").Any())
 				return new Xunit2(diagnosticMessageSink, appDomainSupport, sourceInformationProvider, assemblyFileName, configFileName, shadowCopy, shadowCopyFolder);
 
+#if NETFRAMEWORK
 			var xunitPath = Path.Combine(assemblyFolder, "xunit.dll");
 			if (File.Exists(xunitPath))
 				return new Xunit1(diagnosticMessageSink, appDomainSupport, sourceInformationProvider, assemblyFileName, configFileName, shadowCopy, shadowCopyFolder);
 
-			throw new InvalidOperationException($"Unknown test framework: could not find xunit.dll (v1) or xunit.execution.*.dll (v2) in {assemblyFolder}");
+			throw new InvalidOperationException($"Unknown test framework: could not find xunit.dll (v1), xunit.execution.*.dll (v2), or xunit.v3.core.dll (v3) in {assemblyFolder}");
 #else
-			return new Xunit2(diagnosticMessageSink, appDomainSupport, sourceInformationProvider, assemblyFileName, configFileName, shadowCopy, shadowCopyFolder);
+			throw new InvalidOperationException($"Unknown test framework: could not find xunit.execution.*.dll (v2) or xunit.v3.core.dll (v3) in {assemblyFolder}");
 #endif
 		}
 
