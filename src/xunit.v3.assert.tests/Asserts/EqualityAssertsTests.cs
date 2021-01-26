@@ -897,6 +897,38 @@ public class EqualityAssertsTests
 			Assert.Equal($"Tolerance must be greater than or equal to zero{Environment.NewLine}Parameter name: tolerance", ex.Message);
 			Assert.Equal("tolerance", ex.ParamName);
 		}
+
+		[Theory]
+		[InlineData(0.1, 0.1, 0.0, true)]
+		[InlineData(0.0, 0.001, 0.01, true)]
+		[InlineData(0.0, 0.01, 0.001, false)]
+		[InlineData(double.NaN, double.NaN, 0.5, true)]
+		[InlineData(double.NaN, 55.0, 100.0, false)]
+		[InlineData(55.0, double.NaN, 100.0, false)]
+		[InlineData(double.NegativeInfinity, double.NegativeInfinity, 0.1, true)]
+		[InlineData(double.NegativeInfinity, 10.0, 0.1, false)]
+		[InlineData(10.0, double.NegativeInfinity, 10.0, false)]
+		[InlineData(double.PositiveInfinity, double.PositiveInfinity, 0.1, true)]
+		[InlineData(double.PositiveInfinity, 1.0, 0.1, false)]
+		[InlineData(1.0, double.PositiveInfinity, 1.0, false)]
+		[InlineData(1.1, 1.2, double.PositiveInfinity, true)]
+		[InlineData(double.NaN, double.NegativeInfinity, 0.1, false)]
+		[InlineData(double.NaN, double.PositiveInfinity, 0.1, false)]
+		[InlineData(double.NegativeInfinity, double.NaN, 0.1, false)]
+		[InlineData(double.NegativeInfinity, double.PositiveInfinity, 0.1, false)]
+		[InlineData(double.PositiveInfinity, double.NaN, 0.1, false)]
+		[InlineData(double.PositiveInfinity, double.NegativeInfinity, 0.1, false)]
+		public void DesignTest(double expected, double actual, double tolerance, bool passes)
+		{
+			if (passes)
+			{
+				Assert.Equal(expected, actual, tolerance);
+			}
+			else
+			{
+				var ex = Assert.Throws<EqualException>(() => Assert.Equal(expected, actual, tolerance));
+			}
+		}
 	}
 
 	public class StrictEqual
